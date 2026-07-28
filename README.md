@@ -1,30 +1,36 @@
 # Log Archive Tool
 
-A Bash CLI tool to archive Linux log files by compressing them into tar.gz format.
+A Bash CLI tool to archive Linux log files by compressing them into `tar.gz` format and managing old logs automatically.
 
 This project is part of the roadmap.sh DevOps projects.
 
 [Project URL](https://roadmap.sh/projects/log-archive-tool)
 
+
 ## Features
 
-- Accept log directory as command line argument
-- Compress logs into tar.gz format
-- Create archive directory automatically
-- Store archive creation date and time
-- Simple CLI interface
+- Archive Linux logs using tar.gz compression
+- Accept log directory from user
+- Interactive command-line menu
+- Configure log retention days
+- Configure archive retention days
+- Automatically remove old logs
+- Automatically remove old archives
+- Save archive creation logs
+- Setup daily cron job for automation
 
 
 ## Requirements
 
-- Linux
-- Bash
-- tar
+- Linux operating system
+- Bash shell
+- tar command
+- cron (optional)
 
 
-## Usage
+## Installation
 
-Make executable:
+Clone the repository:
 
 ```bash
-chmod +x log-archive.sh
+git clone https://github.com/NIGHTFURY0X01/log-archive-tool.git
