@@ -4,41 +4,172 @@
 # roadmap.sh DevOps Project
 
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <log-directory>"
-    exit 1
-fi
+# Default values
+log_dir="/var/log"
+days_to_keep_logs=7
+days_to_keep_backups=30
+
+archive_dir="$HOME/log-archives"
 
 
-LOG_DIR=$1
+# Function for input with default value
+prompt_for_input() {
+    read -r -p "$1 [$2]: " input
+    echo "${input:-$2}"
+}
 
 
-if [ ! -d "$LOG_DIR" ]; then
-    echo "Error: Directory does not exist"
-    exit 1
-fi
+# Archive function
+run_archive() {
+
+    if [ ! -d "$log_dir" ]; then
+        echo "Error: Log directory does not exist."
+        return 1
+    fi
 
 
-ARCHIVE_DIR="./archives"
-
-mkdir -p "$ARCHIVE_DIR"
+    mkdir -p "$archive_dir"
 
 
-DATE=$(date +"%Y%m%d_%H%M%S")
+    timestamp=$(date +"%Y%m%d_%H%M%S")
 
-ARCHIVE_NAME="logs_archive_${DATE}.tar.gz"
-
-
-tar -czf "$ARCHIVE_DIR/$ARCHIVE_NAME" "$LOG_DIR"
+    archive_file="$archive_dir/logs_archive_${timestamp}.tar.gz"
 
 
-if [ $? -eq 0 ]; then
-    echo "Log archive created successfully:"
-    echo "$ARCHIVE_DIR/$ARCHIVE_NAME"
-else
-    echo "Failed to create archive"
-    exit 1
-fi
+    echo "Creating archive..."
+
+    tar -czf "$archive_file" "$log_dir"
 
 
-echo "Archive created at: $(date)" >> "$ARCHIVE_DIR/archive.log"
+    if [ $? -eq 0 ]; then
+        echo "Archive created successfully:"
+        echo "$archive_file"
+    else
+        echo "Archive failed"
+        return 1
+    fi
+
+
+    echo "Archive created at $(date)" >> "$archive_dir/archive_log.txt"
+
+
+    echo "Removing logs older than $days_to_keep_logs days..."
+
+    find "$log_dir" \
+    -type f \
+    -mtime +$days_to_keep_logs \
+    -not -path "$archive_dir/*" \
+    -exec rm -f {} \;
+
+
+    echo "Removing old archives..."
+
+    find "$archive_dir" \
+    -type f \
+    -name "*.tar.gz" \
+    -mtime +$days_to_keep_backups \
+    -exec rm -f {} \;
+
+
+    echo "Cleanup completed."
+
+}
+
+
+# Setup cron
+setup_cron() {
+
+    read -r -p "Add daily cron job? (y/n): " choice
+
+
+    if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
+
+        SCRIPT_PATH=$(realpath "$0")
+
+        cron_line="0 2 * * * $SCRIPT_PATH"
+
+
+        (crontab -l 2>/dev/null; echo "$cron_line") | crontab -
+
+
+        echo "Cron added:"
+        echo "$cron_line"
+
+    else
+        echo "Cron not added."
+    fi
+
+}
+
+
+# Main menu
+
+while true; do
+
+    echo
+    echo "================================"
+    echo "       LOG ARCHIVE TOOL"
+    echo "================================"
+
+    echo "Current log directory: $log_dir"
+    echo "Keep logs: $days_to_keep_logs days"
+    echo "Keep archives: $days_to_keep_backups days"
+
+    echo
+
+    echo "1. Set Log Directory"
+    echo "2. Set Log Retention Days"
+    echo "3. Set Archive Retention Days"
+    echo "4. Run Archive"
+    echo "5. Setup Cron"
+    echo "6. Exit"
+
+
+    read -r -p "Choose option [1-6]: " choice
+
+
+    case $choice in
+
+        1)
+            log_dir=$(prompt_for_input "Log directory" "$log_dir")
+
+            if [ ! -d "$log_dir" ]; then
+                echo "Directory does not exist."
+                log_dir="/var/log"
+            fi
+            ;;
+
+
+        2)
+            days_to_keep_logs=$(prompt_for_input "Days to keep logs" "$days_to_keep_logs")
+            ;;
+
+
+        3)
+            days_to_keep_backups=$(prompt_for_input "Days to keep archives" "$days_to_keep_backups")
+            ;;
+
+
+        4)
+            run_archive
+            ;;
+
+
+        5)
+            setup_cron
+            ;;
+
+
+        6)
+            echo "Exiting..."
+            exit 0
+            ;;
+
+
+        *)
+            echo "Invalid option."
+            ;;
+
+    esac
+
+done
